@@ -15,9 +15,15 @@ phase = "null"
 round = 0
 deaths = 0
 votes = 0
+players = []
 voting = []
 playerCount = 0
 werewolfCount = 1
+victim = ""
+seerAlive = False
+
+werewolfDone = True
+seerDone = True
 
 @client.event
 async def on_ready():
@@ -32,7 +38,7 @@ async def on_message(message):
         await message.channel.send("$pong")
         return
 
-    global setup, phase, round, deaths, voting,  votes, playerCount, werewolfCount
+    global setup, phase, round, deaths, voting,  votes, playerCount, werewolfCount, werewolfDone, seerDone, victim, seerAlive
 
     if message.content.startswith('$start') or message.content.startswith('$begin'):
         if setup == False:
@@ -65,8 +71,13 @@ async def on_message(message):
             if phase != "null":
                 await message.channel.send("Game already in session")
             else:
+                
                 #assign roles
                 playerRole = discord.utils.get(message.guild.roles, name='PlayingWerewolf')
+                for player in message.guild.members:
+                    if playerRole in player.roles:
+                        players.append([player.id, "Villager"])
+
                 werewolfRole = discord.utils.get(message.guild.roles, name="Werewolf")
                 seerRole = discord.utils.get(message.guild.roles, name="Seer")
 
@@ -77,16 +88,23 @@ async def on_message(message):
                         playerCount += 1
 
                 #werewolves
-                for i in range(werewolfCount):
-                    player = message.guild.members[random.randint(0, userCount)]
-                    while werewolfRole in player.roles or playerRole not in player.roles:
-                        player = message.guild.members[random.randint(0, userCount)]
-
+                for n in range (werewolfCount):
+                    i = random.randint(0, len(players)-1)
+                    player = message.guild.get_member(players[i][0])
+                    while werewolfRole in player.roles:
+                        i = random.randint(0, len(players)-1)
+                        player = message.guild.get_member(players[i][0])
                     await player.add_roles(werewolfRole)
+                    players[i][1] = "Werewolf"
+
                 #seer
-                while werewolfRole in player.roles or playerRole not in player.roles:
-                    player = message.guild.members[random.randint(0, userCount)]
+                i = random.randint(0, len(players)-1)
+                player = message.guild.get_member(players[i][0])
+                while werewolfRole in player.roles:
+                    i = random.randint(0, len(players)-1)
+                    player = message.guild.get_member(players[i][0])
                 await player.add_roles(seerRole)
+                players[i][1] = "Seer"
 
                 #initialise voting
                 for player in message.guild.members:
@@ -94,7 +112,7 @@ async def on_message(message):
                         voting.append([player.id, 0, False])
 
                 #begin game
-                phase = "seer"
+                phase = "night"
                 round = 1
 
                 gameChannel = discord.utils.get(message.guild.channels, name="game-room")
@@ -104,15 +122,19 @@ async def on_message(message):
                 await gameChannel.send("Night " + str(round))
                 await werewolfChannel.send("--------------------------------------------------------")
                 await werewolfChannel.send("You are werewolf. To select a target to kill: tag them.")
+                await werewolfChannel.send("Select a player to kill.")
                 await seerChannel.send("--------------------------------------------------------")
                 await seerChannel.send("You are seer. To see a target's role: tag them.")
                 await seerChannel.send("Select a player to see their role.")
+
+                werewolfDone = False
+                seerDone = False
                 return
 
     #seer
     seerChannel = discord.utils.get(message.guild.channels, name="seer")
     if message.channel == seerChannel:
-        if phase == "seer":
+        if seerDone == False:
 
             if '<@' in str(message.content) and '&' not in str(message.content): #if tag
                 if '<@!' in str(message.content):
@@ -140,26 +162,27 @@ async def on_message(message):
                     return
 
                 playerRole = discord.utils.get(message.guild.roles, name='PlayingWerewolf')
-                werewolfRole = discord.utils.get(message.guild.roles, name="Werewolf")
-                seerRole = discord.utils.get(message.guild.roles, name="Seer")
-                if playerRole not in player.roles:
+                if playerRole not in player.roles and player.name != victim:
                     await message.channel.send("User not playing")
                     return
-                if werewolfRole in player.roles:
-                    await message.channel.send("That player is a werewolf")
-                elif seerRole in player.roles:
-                    await message.channel.send("You are the seer... dummy")
-                else:
-                    await message.channel.send("That player is a villager")
-                phase = "werewolf"
-
-                werewolfChannel = discord.utils.get(message.guild.channels, name="werewolves")
-                await werewolfChannel.send("Select a player to kill.")
+                for player in players:
+                    if player[0] == id:
+                        await message.channel.send("That player is a " + player[1])
+                
+                if werewolfDone:
+                    phase = "day"
+                    
+                    gameChannel = discord.utils.get(message.guild.channels, name="game-room")
+                    await gameChannel.send("The sun rises")
+                    await gameChannel.send(victim + " has died")
+                seerDone = True
+        else:
+            await message.channel.send(":bonk: You've already looked at a role.")
 
     #werewolf
     werewolfChannel = discord.utils.get(message.guild.channels, name="werewolves")
     if message.channel == werewolfChannel:
-        if phase == "werewolf":
+        if werewolfDone == False:
 
             if '<@' in str(message.content) and '&' not in str(message.content): #if tag
                 if '<@!' in str(message.content):
@@ -200,16 +223,19 @@ async def on_message(message):
                             voting.remove(item)
                             break
 
-                    gameChannel = discord.utils.get(message.guild.channels, name="game-room")
-                    await gameChannel.send("The sun rises")
-                    votes = 0
-                    await gameChannel.send(player.name + " has died")
+                    victim = player.name
                     playerCount -= 1
 
-                    phase = "day"
+                    if seerDone:
+                        phase ="day"
+    
+                        gameChannel = discord.utils.get(message.guild.channels, name="game-room")
+                        await gameChannel.send("The sun rises")
+                        await gameChannel.send(victim + " has died")
+                    werewolfDone = True
             return
         else:
-            await message.channel.send(":bonk: It is not night.")
+            await message.channel.send(":bonk: You've already killed.")
 
     #day
     gameChannel = discord.utils.get(message.guild.channels, name="game-room")
@@ -251,7 +277,7 @@ async def on_message(message):
                         voting[i][1]  += 1
                         votes += 1
                         if votes == playerCount or voting[i][1] > (playerCount / 2):
-                            phase = "seer"
+                            phase = "night"
 
                             #kill most voted
                             max = 0
@@ -282,12 +308,16 @@ async def on_message(message):
                             round += 1
 
                             if werewolfCount > 0:
-                                if (werewolfCount * 2) >= playerCount - 1: #change if doctor or witch
+                                if (werewolfCount * 2) >= playerCount + 1: #change if doctor or witch added
                                     await gameChannel.send("Werewolves Win!")
                                     phase = "null"
                                     return
                                 await gameChannel.send("Night "+ str(round))
-                                await seerChannel.send("Select a player to see their role.")
+                                await werewolfChannel.send("Select a player to kill.")
+                                werewolfDone = False
+                                if seerAlive:
+                                    await seerChannel.send("Select a player to see their role.")
+                                    seerDone = False
                             else:
                                 await gameChannel.send("Villagers Win!")
                                 phase = "null"
