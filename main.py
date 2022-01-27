@@ -123,7 +123,7 @@ async def on_message(message):
 
                 gameChannel = discord.utils.get(message.guild.channels, name="game-room")
                 await gameChannel.send("--------------------------------------------------------")
-                await gameChannel.send("Night " + str(round))
+                await gameChannel.send("**Night " + str(round) + "**")
                 await werewolfChannel.send("--------------------------------------------------------")
                 await werewolfChannel.send("You are werewolf. To select a target to kill: react.")
                 await seerChannel.send("--------------------------------------------------------")
@@ -156,25 +156,7 @@ async def on_message(message):
         if phase == "day":
 
             if '<@' in str(message.content) and '&' not in str(message.content): #if tag
-                if '<@!' in str(message.content):
-                    keynote = '!'
-                else:
-                    keynote = '@'
-
-                #get tagged user
-                msg = str(message.content)
-                temp = ''
-                flag = False
-                for i in range(len(msg)):
-                    if msg[i] == keynote:
-                        flag = True
-                        continue
-                    if flag:
-                        if msg[i] == '>':
-                            break
-                        else:
-                            temp += msg[i]
-                id = int(temp)
+                id = GetPlayerID(message.content)
                 player = message.guild.get_member(id)
                 if player == None:
                     print("Invalid user tagged: " + str(id))
@@ -185,9 +167,32 @@ async def on_message(message):
                     await message.channel.send("User not playing")
                     return
                 
+                #is user allowed to vote?
+                flag = False
+                for n in range(playerCount):
+                    if voting[n][0] == message.author.id:
+                        flag = True
+                        if voting[n][2] == False:
+                            break
+                        else:
+                            try:            
+                                await message.add_reaction('<:bonk:798539206901235773>')
+                            except:
+                                await message.add_reaction('👎')
+                            return
+
+                if flag == False:
+                    try:            
+                        await message.add_reaction('<:bonk:798539206901235773>')
+                    except:
+                        await message.add_reaction('👎')
+                    return
+                
+                #vote
                 for i in range(playerCount):
                     if voting[i][0] == id:
-                        voting[i][1]  += 1
+                        voting[n][2] = True
+                        voting[i][1] += 1
                         votes += 1
                         await message.channel.send(str(votes) + "/" + str(playerCount))
 
@@ -236,7 +241,7 @@ async def on_message(message):
                                 seerChannel = discord.utils.get(message.guild.channels, name="seer")
                                 doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
 
-                                await gameChannel.send("Night "+ str(round))
+                                await gameChannel.send("**Night "+ str(round) + "**")
                                 await werewolfChannel.send("It is night. Select a player to kill.")
                                 werewolfDone = False
                                 if seerAlive:
@@ -248,9 +253,6 @@ async def on_message(message):
                             else:
                                 await gameChannel.send("Villagers Win!")
                                 phase = "null"
-                                
-                         
-                        return
 
 @client.event
 async def on_reaction_add(reaction, user):
@@ -285,9 +287,9 @@ async def on_reaction_add(reaction, user):
                     await NewDay(message)
         else:
             if seerAlive:
-                await message.channel.send(":bonk: You've already looked at a role.")
+                await message.channel.send("<:bonk:798539206901235773> You've already looked at a role.")
             else:
-                await message.channel.send(":bonk: You are dead.")
+                await message.channel.send("<:bonk:798539206901235773> You are dead.")
 
     #werewolf
     werewolfChannel = discord.utils.get(message.guild.channels, name="werewolves")
@@ -317,7 +319,7 @@ async def on_reaction_add(reaction, user):
                         await NewDay(message)
             return
         else:
-            await message.channel.send(":bonk: You've already killed.")
+            await message.channel.send("<:bonk:798539206901235773> You've already killed.")
 
     #doctor
     doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
@@ -345,9 +347,9 @@ async def on_reaction_add(reaction, user):
                     await NewDay(message)
         else:
             if doctorAlive:
-                await message.channel.send(":bonk: You've already protected someone.")
+                await message.channel.send("<:bonk:798539206901235773> You've already protected someone.")
             else:
-                await message.channel.send(":bonk: You are dead.")
+                await message.channel.send("<:bonk:798539206901235773> You are dead.")
 
 async def NewDay(message):
     global phase, playerCount, saved, seerAlive, doctorAlive
@@ -355,12 +357,12 @@ async def NewDay(message):
     playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
 
     phase = "day"
-    await gameChannel.send("The sun rises")
+    await gameChannel.send("The sun rises.")
 
     if victim == saved:
-        await gameChannel.send("Nobody has died")
+        await gameChannel.send("Nobody has died.")
     else:  
-        await gameChannel.send(victim.name + " has died")
+        await gameChannel.send(victim.name + " has died.")
         await victim.remove_roles(playerRole)
         playerCount -= 1
 
@@ -369,10 +371,10 @@ async def NewDay(message):
             phase = "null"
             return
 
-        for item in voting:
-            if item[0] == victim.id: #when player found
-                voting.remove(item)
-                break
+        for i in range(len(voting)):
+            if voting[i][0] == victim.id: #when player found
+                voting.remove(voting[i])
+            voting[i][2] = False
         for item in players:
             if item[0] == victim.id: #when player found
                 if item[1] == "Seer":
