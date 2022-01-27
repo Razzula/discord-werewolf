@@ -50,7 +50,7 @@ async def on_message(message):
             gameChannel = discord.utils.get(message.guild.channels, name="game-room")
             werewolfChannel = discord.utils.get(message.guild.channels, name="werewolves")
             seerChannel = discord.utils.get(message.guild.channels, name="seer")
-            doctorChannel = discord.utils.get(message.guild.channels, name="dcotor")
+            doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
 
             if playerRole == None:
                 await message.channel.send("Error: Role 'PlayingWerewolf' does not exist")
@@ -60,16 +60,16 @@ async def on_message(message):
                 await message.channel.send("Error: Channel '#werewolf' does not exist")
             elif seerChannel == None:
                 await message.channel.send("Error: Channel '#seer' does not exist")
-            elif seerChannel == None:
+            elif doctorChannel == None:
                 await message.channel.send("Error: Channel '#doctor' does not exist")
             else:
                 setup = True
-                await message.channel.send("Setup complete")
+                await message.channel.send("Setup complete.")
 
             return
         else:
             if phase != "null":
-                await message.channel.send("Game already in session")
+                await message.channel.send("Game already in session..")
             else:
                 #reset
                 playerCount = 0
@@ -125,21 +125,22 @@ async def on_message(message):
                 await gameChannel.send("--------------------------------------------------------")
                 await gameChannel.send("Night " + str(round))
                 await werewolfChannel.send("--------------------------------------------------------")
-                await werewolfChannel.send("You are werewolf. To select a target to kill: tag them.")
+                await werewolfChannel.send("You are werewolf. To select a target to kill: react.")
                 await seerChannel.send("--------------------------------------------------------")
-                await seerChannel.send("You are a seer. To see a target's role: tag them.")
+                await seerChannel.send("You are a seer. To see a target's role: react.")
                 await doctorChannel.send("--------------------------------------------------------")
-                await doctorChannel.send("You are a doctor. To protect somebody from the werewolves: tag them.")
+                await doctorChannel.send("You are a doctor. To protect somebody from the werewolves: react.")
                 
 
                 for player in players:
-                    await werewolfChannel.send("<@" + str(player[0]) + ">")
-                    await seerChannel.send("<@" + str(player[0]) + ">")
-                    await doctorChannel.send("<@" + str(player[0]) + ">")
+                    temp = "<@" + str(player[0]) + ">"
+                    await werewolfChannel.send(temp)
+                    await seerChannel.send(temp)
+                    await doctorChannel.send(temp)
 
-                await werewolfChannel.send("Select a player to kill.")
-                await seerChannel.send("Select a player to see their role.")
-                await doctorChannel.send("Select a player to protect.")
+                await werewolfChannel.send("It is night. Select a player to kill.")
+                await seerChannel.send("It is night. Select a player to see their role.")
+                await doctorChannel.send("It is night. Select a player to protect.")
 
                 werewolfDone = False
                 seerDone = False
@@ -236,13 +237,13 @@ async def on_message(message):
                                 doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
 
                                 await gameChannel.send("Night "+ str(round))
-                                await werewolfChannel.send("Select a player to kill.")
+                                await werewolfChannel.send("It is night. Select a player to kill.")
                                 werewolfDone = False
                                 if seerAlive:
-                                    await seerChannel.send("Select a player to see their role.")
+                                    await seerChannel.send("It is night. Select a player to see their role.")
                                     seerDone = False
                                 if doctorAlive:
-                                    await doctorChannel.send("Select a player to protect.")
+                                    await doctorChannel.send("It is night. Select a player to protect.")
                                     doctorDone = False
                             else:
                                 await gameChannel.send("Villagers Win!")
@@ -264,25 +265,7 @@ async def on_reaction_add(reaction, user):
         if seerDone == False:
 
             if '<@' in str(message.content) and '&' not in str(message.content): #if tag
-                if '<@!' in str(message.content):
-                    keynote = '!'
-                else:
-                    keynote = '@'
-
-                #get tagged user
-                msg = str(message.content)
-                temp = ''
-                flag = False
-                for i in range(len(msg)):
-                    if msg[i] == keynote:
-                        flag = True
-                        continue
-                    if flag:
-                        if msg[i] == '>':
-                            break
-                        else:
-                            temp += msg[i]
-                id = int(temp)
+                id = GetPlayerID(message.content)
                 player = message.guild.get_member(id)
                 if player == None:
                     print("Invalid user tagged: " + str(id))
@@ -313,25 +296,7 @@ async def on_reaction_add(reaction, user):
         if werewolfDone == False:
 
             if '<@' in str(message.content) and '&' not in str(message.content): #if tag
-                if '<@!' in str(message.content):
-                    keynote = '!'
-                else:
-                    keynote = '@'
-
-                #get tagged user
-                msg = str(message.content)
-                temp = ''
-                flag = False
-                for i in range(len(msg)):
-                    if msg[i] == keynote:
-                        flag = True
-                        continue
-                    if flag:
-                        if msg[i] == '>':
-                            break
-                        else:
-                            temp += msg[i]
-                id = int(temp)
+                id = GetPlayerID(message.content)
                 player = message.guild.get_member(id)
                 if player == None:
                     print("Invalid user tagged: " + str(id))
@@ -361,25 +326,7 @@ async def on_reaction_add(reaction, user):
         if doctorDone == False:
 
             if '<@' in str(message.content) and '&' not in str(message.content): #if tag
-                if '<@!' in str(message.content):
-                    keynote = '!'
-                else:
-                    keynote = '@'
-
-                #get tagged user
-                msg = str(message.content)
-                temp = ''
-                flag = False
-                for i in range(len(msg)):
-                    if msg[i] == keynote:
-                        flag = True
-                        continue
-                    if flag:
-                        if msg[i] == '>':
-                            break
-                        else:
-                            temp += msg[i]
-                id = int(temp)
+                id = GetPlayerID(message.content)
                 player = message.guild.get_member(id)
                 if player == None:
                     print("Invalid user tagged: " + str(id))
@@ -436,5 +383,27 @@ async def NewDay(message):
                 break
     
     saved = None
+
+def GetPlayerID(text):
+    if '<@!' in str(text):
+        keynote = '!'
+    else:
+        keynote = '@'
+
+    #get tagged user
+    msg = str(text)
+    temp = ''
+    flag = False
+    for i in range(len(msg)):
+        if msg[i] == keynote:
+            flag = True
+            continue
+        if flag:
+            if msg[i] == '>':
+                break
+            else:
+                temp += msg[i]
+    id = int(temp)
+    return id
 
 client.run(token)
