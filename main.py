@@ -94,14 +94,14 @@ async def on_message(message):
 
                 userCount = message.guild.member_count - 1
 
-                roles = ["Werewolf", "Seer", "Doctor"]
+                roles = ["Werewolf", "Seer", "Doctor", "Drunk", "Alpha Werewolf"] #for 6+ people
                 for role in roles:
                     i = random.randint(0, len(players)-1)
                     while players[i][1] != "Villager":
                         i = random.randint(0, len(players)-1)
                     player = message.guild.get_member(players[i][0])
 
-                    if role == "Werewolf":
+                    if "Werewolf" in role:
                         await werewolfChannel.set_permissions(player, view_channel=True)
                     elif role == "Seer":
                         await seerChannel.set_permissions(player, view_channel=True)
@@ -137,6 +137,12 @@ async def on_message(message):
                     await werewolfChannel.send(temp)
                     await seerChannel.send(temp)
                     await doctorChannel.send(temp)
+
+                    try:
+                        user = message.guild.get_member(player[0])
+                        await user.send("Sshh. You are a " + str(player[1]) + ".")
+                    except:
+                        print("Cannot message " + str(user.name))
 
                 await werewolfChannel.send("It is night. Select a player to kill.")
                 await seerChannel.send("It is night. Select a player to see their role.")
@@ -189,7 +195,7 @@ async def on_message(message):
                     return
                 
                 #vote
-                for i in range(playerCount):
+                for i in range(playerCount)-1:
                     if voting[i][0] == id:
                         voting[n][2] = True
                         voting[i][1] += 1
@@ -371,7 +377,7 @@ async def NewDay(message):
             phase = "null"
             return
 
-        for i in range(len(voting)):
+        for i in range(len(voting)-1):
             if voting[i][0] == victim.id: #when player found
                 voting.remove(voting[i])
             voting[i][2] = False
