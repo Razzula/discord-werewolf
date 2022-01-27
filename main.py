@@ -38,11 +38,6 @@ async def on_message(message):
         await message.channel.send("$pong")
         return
 
-    if message.content.startswith('$test'):
-        user = message.guild.get_member(706912166309265538)
-        await message.channel.set_permissions(user, view_channel=True)
-        return
-
     global setup, phase, round, deaths, voting,  votes, playerCount, werewolfCount, werewolfDone, seerDone, victim, seerAlive
 
     if message.content.startswith('$start') or message.content.startswith('$begin'):
