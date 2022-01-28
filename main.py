@@ -1,5 +1,4 @@
 from operator import truediv
-from xmlrpc.server import ServerHTMLDoc
 import discord
 import random
 
@@ -30,7 +29,7 @@ doctorDone = True
 
 @client.event
 async def on_ready():
-    print('Logged in as {0.user} (main)\n'.format(client))
+    print('Logged in as {0.user} (discord-werewolf)\n'.format(client))
 
 @client.event
 async def on_message(message):
@@ -41,11 +40,12 @@ async def on_message(message):
         await message.channel.send("$pong")
         return
 
-    global setup, phase, round, players, voting, votes, playerCount, werewolfCount, seerAlive, doctorAlive, werewolfDone, seerDone, doctorDone
+    global setup, phase, round, players, voting, votes, playerCount, werewolfCount, seerAlive, doctorAlive, werewolfDone, seerDone, doctorDone, saved
 
     if message.content.startswith('$start') or message.content.startswith('$begin'):
         if setup == False:
             playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
+            aliveRole = discord.utils.get(message.guild.roles, name="Alive")
 
             gameChannel = discord.utils.get(message.guild.channels, name="game-room")
             werewolfChannel = discord.utils.get(message.guild.channels, name="werewolves")
@@ -54,6 +54,8 @@ async def on_message(message):
 
             if playerRole == None:
                 await message.channel.send("Error: Role 'PlayingWerewolf' does not exist")
+            elif playerRole == None:
+                await message.channel.send("Error: Role 'Alive' does not exist")
             elif gameChannel == None:
                 await message.channel.send("Error: Channel '#game-channel' does not exist")
             elif werewolfChannel == None:
@@ -84,17 +86,29 @@ async def on_message(message):
                 doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
                 
                 playerRole = discord.utils.get(message.guild.roles, name='PlayingWerewolf')
+                aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 for player in message.guild.members:
                     if playerRole in player.roles:
                         players.append([player.id, "Villager"])
                         await werewolfChannel.set_permissions(player, view_channel=False)
                         await seerChannel.set_permissions(player, view_channel=False)
                         await doctorChannel.set_permissions(player, view_channel=False)
+                        
+                        await player.add_roles(aliveRole)
                         playerCount += 1
 
-                userCount = message.guild.member_count - 1
+                #enforce player min.
+                if playerCount < 3:
+                    await message.channel.send("Too few players are <@&" + str(playerRole.id) + "> (" + str(playerCount) + "/3)")
+                    return
 
-                roles = ["Werewolf", "Seer", "Doctor", "Drunk", "Alpha Werewolf"] #for 6+ people
+                roles = ["Werewolf", "Seer", "Doctor"]
+
+                if playerCount >= 5:
+                    roles.append("Drunk")
+                    if playerCount >= 6:
+                        roles.append("Alpha Werewolf")
+
                 for role in roles:
                     i = random.randint(0, len(players)-1)
                     while players[i][1] != "Villager":
@@ -169,8 +183,12 @@ async def on_message(message):
                     return
 
                 playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
+                aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 if playerRole not in player.roles:
                     await message.channel.send("User not playing")
+                    return
+                elif aliveRole not in player.roles:
+                    await message.channel.send("Player not alive")
                     return
                 
                 #is user allowed to vote?
@@ -224,7 +242,7 @@ async def on_message(message):
                                 await gameChannel.send("Voting tied. Nobody was lynched.")
                             else:
                                 player = message.guild.get_member(id)
-                                await player.remove_roles(playerRole)
+                                await player.remove_roles(aliveRole)
                                 await gameChannel.send(player.name + " was lynched.")
                                 playerCount -= 1
                                 voting.remove(item)
@@ -280,8 +298,12 @@ async def on_reaction_add(reaction, user):
                     return
 
                 playerRole = discord.utils.get(message.guild.roles, name='PlayingWerewolf')
+                aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 if playerRole not in player.roles and player.name != victim:
                     await message.channel.send("User not playing")
+                    return
+                elif aliveRole not in player.roles:
+                    await message.channel.send("Player not alive")
                     return
                 
                 for player in players:
@@ -311,8 +333,11 @@ async def on_reaction_add(reaction, user):
                     return
 
                 playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
+                aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 if playerRole not in player.roles:
                     await message.channel.send("User not playing")
+                elif aliveRole not in player.roles:
+                    await message.channel.send("Player already dead")
                 elif [id, "Werewolf"] in players:
                     await message.channel.send("Cannot kill a werewolf")
                 else:
@@ -341,8 +366,12 @@ async def on_reaction_add(reaction, user):
                     return
 
                 playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
+                aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 if playerRole not in player.roles:
                     await message.channel.send("User not playing")
+                    return
+                elif aliveRole not in player.roles:
+                    await message.channel.send("Player already dead")
                     return
 
                 saved = player
@@ -360,16 +389,16 @@ async def on_reaction_add(reaction, user):
 async def NewDay(message):
     global phase, playerCount, saved, seerAlive, doctorAlive
     gameChannel = discord.utils.get(message.guild.channels, name="game-room")
-    playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
 
     phase = "day"
     await gameChannel.send("The sun rises.")
 
     if victim == saved:
         await gameChannel.send("Nobody has died.")
-    else:  
+    else:
+        aliveRole = discord.utils.get(message.guild.roles, name="Alive")  
+        await victim.remove_roles(aliveRole)
         await gameChannel.send(victim.name + " has died.")
-        await victim.remove_roles(playerRole)
         playerCount -= 1
 
         if (werewolfCount * 2) >= playerCount:
