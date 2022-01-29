@@ -10,6 +10,7 @@ intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents=intents)
 
+#variables used for game
 setup = False
 phase = "null"
 round = 0
@@ -26,6 +27,11 @@ doctorAlive = False
 werewolfDone = True
 seerDone = True
 doctorDone = True
+
+#narration messages
+msgDay = ["The sun rises.", "Day drops, day rises. Dusk is sweet, the sunrise sweeter.", "A red sun rises. Blood has been spilled this night.", "https://i.gifer.com/embedded/download/P7aO.gif"]
+msgNight = ["The sun has set.", "A full moon rises. Howls can be heard in the darkness"]
+msgDeath = ["Their body was found, mauled, in the nearby woods", "The body was never found, but their house is covered in claw marks..", ""]
 
 @client.event
 async def on_ready():
@@ -135,16 +141,14 @@ async def on_message(message):
                 phase = "night"
                 round = 1
 
-                gameChannel = discord.utils.get(message.guild.channels, name="game-room")
-                await gameChannel.send("--------------------------------------------------------")
-                await gameChannel.send("**Night " + str(round) + "**")
-                await werewolfChannel.send("--------------------------------------------------------")
-                await werewolfChannel.send("You are werewolf. To select a target to kill: react.")
-                await seerChannel.send("--------------------------------------------------------")
-                await seerChannel.send("You are a seer. To see a target's role: react.")
-                await doctorChannel.send("--------------------------------------------------------")
-                await doctorChannel.send("You are a doctor. To protect somebody from the werewolves: react.")
-                
+                gameChannel = discord.utils.get(message.guild.channels, name="game-room")               
+                aliveRole = discord.utils.get(message.guild.roles, name="Alive")
+                await gameChannel.set_permissions(aliveRole, message_channel=False)
+
+                await gameChannel.send("--------------------------------------------------------\nThe sun sets on the village. A full moon rises. Howling can be heard in the darkness...")
+                await werewolfChannel.send("--------------------------------------------------------\nYou are werewolf. To select a target to kill: react.")
+                await seerChannel.send("--------------------------------------------------------\nYou are a seer. To see a target's role: react.")
+                await doctorChannel.send("--------------------------------------------------------\nYou are a doctor. To protect somebody from the werewolves: react.")               
 
                 for player in players:
                     temp = "<@" + str(player[0]) + ">"
@@ -222,6 +226,7 @@ async def on_message(message):
 
                         if votes == playerCount or voting[i][1] > (playerCount / 2):
                             phase = "night"
+                            await gameChannel.set_permissions(aliveRole, message_channel=False)
 
                             #kill most voted
                             max = 0
@@ -243,7 +248,7 @@ async def on_message(message):
                             else:
                                 player = message.guild.get_member(id)
                                 await player.remove_roles(aliveRole)
-                                await gameChannel.send(player.name + " was lynched.")
+                                await gameChannel.send("<@" + str(player.id) + "> was lynched.")
                                 playerCount -= 1
                                 voting.remove(item)
                                 if [id, "Werewolf"] in players:
@@ -265,7 +270,7 @@ async def on_message(message):
                                 seerChannel = discord.utils.get(message.guild.channels, name="seer")
                                 doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
 
-                                await gameChannel.send("**Night "+ str(round) + "**")
+                                await gameChannel.send(random.choice(msgNight))
                                 await werewolfChannel.send("It is night. Select a player to kill.")
                                 werewolfDone = False
                                 if seerAlive:
@@ -335,11 +340,11 @@ async def on_reaction_add(reaction, user):
                 playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
                 aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 if playerRole not in player.roles:
-                    await message.channel.send("User not playing")
+                    await message.channel.send("User not playing.")
                 elif aliveRole not in player.roles:
-                    await message.channel.send("Player already dead")
+                    await message.channel.send("Player already dead.")
                 elif [id, "Werewolf"] in players:
-                    await message.channel.send("Cannot kill a werewolf")
+                    await message.channel.send("Cannot kill a werewolf..")
                 else:
 
                     victim = player
@@ -391,14 +396,17 @@ async def NewDay(message):
     gameChannel = discord.utils.get(message.guild.channels, name="game-room")
 
     phase = "day"
-    await gameChannel.send("The sun rises.")
+    await gameChannel.send("**Day "+ str(round) + "**\n" + random.choice(msgDay))
+
+    aliveRole = discord.utils.get(message.guild.roles, name="Alive")
+    await gameChannel.set_permissions(aliveRole, message_channel=True)
 
     if victim == saved:
         await gameChannel.send("Nobody has died.")
     else:
         aliveRole = discord.utils.get(message.guild.roles, name="Alive")  
         await victim.remove_roles(aliveRole)
-        await gameChannel.send(victim.name + " has died.")
+        await gameChannel.send("<@" + str(victim.id) + "> has died." + random.choice(msgDeath))
         playerCount -= 1
 
         if (werewolfCount * 2) >= playerCount:
