@@ -19,6 +19,8 @@ votes = 0
 players = []
 voting = []
 playerCount = 0
+
+#<roles>
 #werewolves
 werewolfCount = 1
 victim = None
@@ -67,28 +69,43 @@ async def on_message(message):
     global saved, doctorAlive, doctorDone
 
     if message.content.startswith('$start') or message.content.startswith('$begin'):
+
+        #roles
+        f = open('config.txt', 'r')
+        config = f.readlines()
+        f.close()
+
+        roles = []
+        for line in config:
+            if '#' not in line: #ignore comments
+                exec("roles.append(Role(" + line + "))")
+
         if setup == False:
             playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
             aliveRole = discord.utils.get(message.guild.roles, name="Alive")
-
             gameChannel = discord.utils.get(message.guild.channels, name="game-room")
-            werewolfChannel = discord.utils.get(message.guild.channels, name="werewolf")
-            seerChannel = discord.utils.get(message.guild.channels, name="seer")
-            doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
+
+            flag = True
 
             if playerRole == None:
                 await message.channel.send("Error: Role 'PlayingWerewolf' does not exist")
-            elif playerRole == None:
+                flag = False
+            if playerRole == None:
                 await message.channel.send("Error: Role 'Alive' does not exist")
-            elif gameChannel == None:
-                await message.channel.send("Error: Channel '#game-channel' does not exist")
-            elif werewolfChannel == None:
-                await message.channel.send("Error: Channel '#werewolf' does not exist")
-            elif seerChannel == None:
-                await message.channel.send("Error: Channel '#seer' does not exist")
-            elif doctorChannel == None:
-                await message.channel.send("Error: Channel '#doctor' does not exist")
-            else:
+                flag = False
+            if gameChannel == None:
+                await message.channel.send("Error: Channel #game-room does not exist")
+                flag = False
+
+            for role in roles:
+                if role.passive:
+                    continue
+                roleChannel = discord.utils.get(message.guild.channels, name=role.name)
+                if roleChannel == None:
+                    await message.channel.send("Error: Channel #{} does not exist".format(role.name))
+                    flag = False
+
+            if flag:
                 setup = True
                 await message.channel.send("Setup complete.")
 
@@ -105,18 +122,16 @@ async def on_message(message):
                 saved = None
 
                 #assign roles
-                werewolfChannel = discord.utils.get(message.guild.channels, name="werewolf")
-                seerChannel = discord.utils.get(message.guild.channels, name="seer")
-                doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
-                
                 playerRole = discord.utils.get(message.guild.roles, name='PlayingWerewolf')
                 aliveRole = discord.utils.get(message.guild.roles, name="Alive")
                 for player in message.guild.members:
                     if playerRole in player.roles:
                         players.append([player.id, "Villager"])
-                        await werewolfChannel.set_permissions(player, view_channel=False)
-                        await seerChannel.set_permissions(player, view_channel=False)
-                        await doctorChannel.set_permissions(player, view_channel=False)
+                        for role in roles:
+                            if role.passive:
+                                continue
+                            roleChannel = discord.utils.get(message.guild.channels, name=role.name)
+                            await roleChannel.set_permissions(player, view_channel=False)
                         
                         await player.add_roles(aliveRole)
                         playerCount += 1
@@ -127,15 +142,6 @@ async def on_message(message):
                     return
 
                 #roles
-                f = open('config.txt', 'r')
-                config = f.readlines()
-                f.close()
-
-                roles = []
-                for line in config:
-                    if '#' not in line: #ignore comments
-                        exec("roles.append(Role(" + line + "))")
-
                 werewolfCount = math.floor(playerCount * 1/3)
                 counter = 0
                 wwcounter = 0
@@ -176,14 +182,9 @@ async def on_message(message):
                                 print(player.name + " : " + role.name)
 
                                 #permissions
-                                if "Werewolf" in role.name:
-                                    await werewolfChannel.set_permissions(player, view_channel=True)
-                                elif role.name == "Seer":
-                                    await seerChannel.set_permissions(player, view_channel=True)
-                                    seerAlive = True
-                                elif role.name == "Doctor":
-                                    await doctorChannel.set_permissions(player, view_channel=True)
-                                    doctorAlive = True
+                                if role.passive == False:
+                                    roleChannel = discord.utils.get(message.guild.channels, name=role.name)
+                                    await roleChannel.set_permissions(player, view_channel=True)
                             
                 for n in range(werewolfCount - wwcounter): #werewolves
                     while True:
@@ -193,6 +194,7 @@ async def on_message(message):
                     player = message.guild.get_member(players[i][0])
                     players[i][1] = "Werewolf"
                     print(player.name + " : Werewolf")
+                    werewolfChannel = discord.utils.get(message.guild.channels, name="werewolf")
                     await werewolfChannel.set_permissions(player, view_channel=True)
 
                 #initialise voting
@@ -210,14 +212,21 @@ async def on_message(message):
 
                 await gameChannel.send("--------------------------------------------------------\nThe sun sets on the village. A full moon rises. Howling can be heard in the darkness...")
                 await werewolfChannel.send("--------------------------------------------------------\nYou are werewolf. To select a target to kill: react.")
+
+                #<roles>
+                seerChannel = discord.utils.get(message.guild.channels, name="seer")
                 await seerChannel.send("--------------------------------------------------------\nYou are a seer. To see a target's role: react.")
+                doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
                 await doctorChannel.send("--------------------------------------------------------\nYou are a doctor. To protect somebody from the werewolves: react.")               
 
+                #list players in each role chat
                 for player in players:
                     temp = "<@" + str(player[0]) + ">"
-                    await werewolfChannel.send(temp)
-                    await seerChannel.send(temp)
-                    await doctorChannel.send(temp)
+                    for role in roles:
+                        if role.passive:
+                            continue
+                        roleChannel = discord.utils.get(message.guild.channels, name=role.name)
+                        await roleChannel.send(temp)
 
                     try:
                         user = message.guild.get_member(player[0])
@@ -225,13 +234,14 @@ async def on_message(message):
                     except:
                         print("Cannot message " + str(user.name))
 
+                #<roles>
                 await werewolfChannel.send("It is night. Select a player to kill.")
                 await seerChannel.send("It is night. Select a player to see their role.")
                 await doctorChannel.send("It is night. Select a player to protect.")
-
                 werewolfDone = False
                 seerDone = False
                 doctorDone = False
+
                 return
 
     if phase == "null":
@@ -329,6 +339,7 @@ async def on_message(message):
                                     return
 
                                 votes = 0
+                                #<roles>
                                 werewolfChannel = discord.utils.get(message.guild.channels, name="werewolf")
                                 seerChannel = discord.utils.get(message.guild.channels, name="seer")
                                 doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
@@ -352,6 +363,7 @@ async def on_reaction_add(reaction, user):
 
     global seerDone, victim, werewolfDone, doctorDone, saved
 
+    #<roles>
     #seer
     seerChannel = discord.utils.get(message.guild.channels, name="seer")
     if message.channel == seerChannel:
@@ -366,6 +378,10 @@ async def on_reaction_add(reaction, user):
     doctorChannel = discord.utils.get(message.guild.channels, name="doctor")
     if message.channel == doctorChannel:
         await Doctor(reaction, user)
+
+    # customChannel = discord.utils.get(message.guild.channels, name="customName")
+    # if message.channel == customChannel:
+    #     await Custom(reaction, user)
 
 ## ROLES ################
 # WEREWOLF
@@ -506,6 +522,7 @@ async def NewDay(message):
             voting[i][2] = False
         for item in players:
             if item[0] == victim.id: #when player found
+                #<roles>
                 if item[1] == "Seer":
                     seerAlive = False
                 elif item[1] == "Doctor":
@@ -513,6 +530,7 @@ async def NewDay(message):
                     
                 break
     
+    #doctor
     saved = None
 
 ## COMMON ################
