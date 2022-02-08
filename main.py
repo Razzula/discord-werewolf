@@ -509,6 +509,38 @@ async def Doctor(reaction, user):
                 else:
                     await message.channel.send("<:bonk:798539206901235773> You are dead.")
 
+## EXAMPLE OF A CUSTOM ROLE
+# async def Custom(reaction, user):
+#     message = reaction.message
+
+#     await message.remove_reaction(reaction.emoji, user)
+#     for role in roles:
+#         if role.name == "Custom":
+#             if role.done== False:
+
+#                 if '<@' in str(message.content) and '&' not in str(message.content): #if tag
+#                     id = GetPlayerID(message.content)
+#                     player = message.guild.get_member(id)
+#                     if player == None:
+#                         print("Invalid user tagged: " + str(id))
+#                         return
+
+#                     ## CODE GOES HERE
+                    
+#                     temp = True
+#                     role.done = True
+#                     for otherRole in roles:
+#                         if otherRole.done == False:
+#                             temp = False
+#                             break
+#                     if temp:
+#                         await NewDay(message)
+#             else:
+#                 if role.alive > 0:
+#                     await message.channel.send("<:bonk:798539206901235773> You've already done.")
+#                 else:
+#                     await message.channel.send("<:bonk:798539206901235773> You are dead.")
+
 ## DAY ################
 async def NewDay(message):
     global phase, playerCount, saved
