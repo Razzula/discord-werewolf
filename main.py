@@ -107,6 +107,11 @@ async def on_message(message):
                 await message.channel.send("Error: Channel #{} does not exist".format(role.name.lower()))
                 flag = False
 
+        roleChannel = discord.utils.get(message.guild.channels, name="werewolf")
+        if roleChannel == None:
+            await message.channel.send("Error: Channel #werewolf does not exist")
+            flag = False
+
         if flag == False: #exit if there are missing roles and/or channels
             return
 
