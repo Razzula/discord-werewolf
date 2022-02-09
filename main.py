@@ -85,7 +85,7 @@ async def on_message(message):
  
         playerRole = discord.utils.get(message.guild.roles, name="PlayingWerewolf")
         aliveRole = discord.utils.get(message.guild.roles, name="Alive")
-        gameChannel = discord.utils.get(message.guild.channels, name="game-room")
+        gameChannel = discord.utils.get(message.guild.channels, name="village")
 
         flag = True
 
@@ -96,7 +96,7 @@ async def on_message(message):
             await message.channel.send("Error: Role 'Alive' does not exist")
             flag = False
         if gameChannel == None:
-            await message.channel.send("Error: Channel #game-room does not exist")
+            await message.channel.send("Error: Channel #village does not exist")
             flag = False
 
         for role in roles:
@@ -211,7 +211,7 @@ async def on_message(message):
         #begin game
         round = 1
 
-        gameChannel = discord.utils.get(message.guild.channels, name="game-room")               
+        gameChannel = discord.utils.get(message.guild.channels, name="village")               
         aliveRole = discord.utils.get(message.guild.roles, name="Alive")
         await gameChannel.set_permissions(aliveRole, send_messages=False)
 
@@ -246,7 +246,7 @@ async def on_message(message):
         return
 
     #day
-    gameChannel = discord.utils.get(message.guild.channels, name="game-room")
+    gameChannel = discord.utils.get(message.guild.channels, name="village")
     if message.channel == gameChannel:
         if phase == "day":
 
@@ -549,7 +549,7 @@ async def Doctor(reaction, user):
 ## DAY ################
 async def NewDay(message):
     global phase, playerCount, saved
-    gameChannel = discord.utils.get(message.guild.channels, name="game-room")
+    gameChannel = discord.utils.get(message.guild.channels, name="village")
 
     phase = "day"
     await gameChannel.send("**Day "+ str(round) + "**\n" + random.choice(msgDay))
