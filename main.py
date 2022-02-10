@@ -87,32 +87,37 @@ async def on_message(message):
         aliveRole = discord.utils.get(message.guild.roles, name="Alive")
         gameChannel = discord.utils.get(message.guild.channels, name="village")
 
-        flag = True
-
+        #roles
         if playerRole == None:
-            await message.channel.send("Error: Role 'PlayingWerewolf' does not exist")
-            flag = False
+            playerRole = await message.guild.create_role(name="PlayingWerewolf")
+            await message.channel.send("Created Role <@&" + str(playerRole.id) + ">")
         if playerRole == None:
-            await message.channel.send("Error: Role 'Alive' does not exist")
-            flag = False
+            aliveRole = await message.guild.create_role(name="Alive", colour=0x2ecc71)
+            #move role as high as possible
+            try:
+                pos = 1
+                while True:
+                    await aliveRole.edit(position=pos)
+                    pos += 1
+            except:
+                await message.channel.send("Created Role <@&" + str(aliveRole.id) + ">")
+        #channels
+        log = 'Error:'
         if gameChannel == None:
-            await message.channel.send("Error: Channel #village does not exist")
-            flag = False
+            log += "\n-Channel #village does not exist"
+        roleChannel = discord.utils.get(message.guild.channels, name="werewolves")
+        if roleChannel == None:
+            log += "\n-Channel #werewolves does not exist"
 
         for role in roles:
             if role.passive:
                 continue
             roleChannel = discord.utils.get(message.guild.channels, name=role.name.lower())
             if roleChannel == None:
-                await message.channel.send("Error: Channel #{} does not exist".format(role.name.lower()))
-                flag = False
+                log += "\n-Channel #{} does not exist".format(role.name.lower())
 
-        roleChannel = discord.utils.get(message.guild.channels, name="werewolf")
-        if roleChannel == None:
-            await message.channel.send("Error: Channel #werewolf does not exist")
-            flag = False
-
-        if flag == False: #exit if there are missing roles and/or channels
+        if log != 'Error:': #exit if there are missing channels
+            await message.channel.send(log)
             return
 
         #reset
@@ -199,7 +204,7 @@ async def on_message(message):
             werewolfChannel = discord.utils.get(message.guild.channels, name="werewolf")
             await werewolfChannel.set_permissions(player, view_channel=True)
 
-        werewolf = Role('Werewolf', job='to kill', passive=False)
+        werewolf = Role('Werewolves', job='to kill', passive=False)
         werewolf.done = False
         roles.append(werewolf)
 
@@ -222,7 +227,7 @@ async def on_message(message):
                 continue
 
             roleChannel = discord.utils.get(message.guild.channels, name=role.name.lower())
-            await roleChannel.send("--------------------------------------------------------\nYou are a {}. To select a target to {}: react.".format(role.name, role.job))
+            await roleChannel.send("--------------------------------------------------------\nYou are the {}. To select a target to {}: react.".format(role.name, role.job))
 
             #list players
             for player in players:
@@ -324,7 +329,7 @@ async def on_message(message):
                                 playerCount -= 1
                                 voting.remove(item)
                                 
-                                if [id, 'Werewolf'] in players:
+                                if [id, 'Werewolves'] in players:
                                     werewolfCount -= 1
                                 else:
                                     for role in roles:
@@ -348,7 +353,7 @@ async def on_message(message):
                                 for role in roles:
                                     if role.passive:
                                         continue
-                                    if role.alive > 0 or role.name == "Werewolf":
+                                    if role.alive > 0 or role.name == "Werewolves":
                                         roleChannel = discord.utils.get(message.guild.channels, name=role.name.lower())
                                         await roleChannel.send("It is night. Select a player to " + role.job + ".")
                                         role.done = False
@@ -393,7 +398,7 @@ async def Werewolf(reaction, user):
 
     await message.remove_reaction(reaction.emoji, user)
     for role in roles:
-        if role.name == "Werewolf":
+        if role.name == "Werewolves":
             if role.done== False:
 
                 if '<@' in str(message.content) and '&' not in str(message.content): #if tag

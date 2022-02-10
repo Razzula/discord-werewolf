@@ -1,5 +1,3 @@
-
-
 # discord-werewolf
 
 A Discord bot for hosting the classic social deduction game: Werewolf. Features roles such as Werewolf, Seer, Doctor, Drunk, and Alpha Werewolf, with suporrt for easily-added custom roles. A bot running this code will only be able to host a single game on a single server, at any given time, as use over multiple servers was not a requirement for its original purpose.
@@ -31,7 +29,7 @@ To run the bot, run the `main.py` file (this will display players' roles, and so
 
 To begin the game simply message `$start`  or `$begin` to a channel
 
-The bot will inform you of any missing channels and/or server roles, though cannot create them, so will require a  server admin to do so.  Any permission-errors will be visible in the console. If a category exists with same name as one of the game channels, this may lead to fatal errors, causing the program to crash.
+The bot will create any required server roles that are missing, and will inform you of any missing channels, though cannot create them, so will require a  server admin to do so.  Any permission-errors will be visible in the console. If a category exists with same name as one of the game channels, this may lead to fatal errors, causing the program to crash.
 
 ### Adding Custom Roles
 
